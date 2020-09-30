@@ -1,0 +1,13 @@
+[Unit]
+Description=Ysu Daemon beta network
+After=network.target
+
+[Service]
+Type=simple
+User=ysucurrency
+WorkingDirectory=/var/ysucurrency/YsuBeta
+ExecStart=/usr/bin/ysu_node-beta --daemon
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

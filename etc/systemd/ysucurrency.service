@@ -1,0 +1,13 @@
+[Unit]
+Description=Ysu Daemon live network
+After=network.target
+
+[Service]
+Type=simple
+User=ysucurrency
+WorkingDirectory=/var/ysucurrency/Ysu
+ExecStart=/usr/bin/ysu_node --daemon
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

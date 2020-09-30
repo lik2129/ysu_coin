@@ -1,0 +1,66 @@
+Name:                   ysucurrency-beta
+Version:                @VERSION@ 
+Release:                @RELEASE@%{?dist}
+Summary:                Ysucurrency Beta Daemon
+License:                BSD-2-Clause
+URL:                    https://ysu.org/
+Requires(pre):          /usr/sbin/useradd, /usr/bin/getent
+Requires(postun):       /usr/sbin/userdel
+BuildRequires:          make, libstdc++-static, glibc-devel, glibc-headers
+Source:                 ysu-%{version}.tar.gz
+
+%description
+This is ysucurrency daemon.  Ysu is a digital currency that is
+peer-to-peer, decentralized, and trustless. This package includes
+the ysu daemon, and a service.
+
+%prep
+if [ ! -x "$(which cmake)" ]; then
+	echo "cmake must exist, try:" >&2
+	echo "      scl enable devtoolset-7 'rpmbuild ...'" >&2
+	exit 1
+fi
+if cc --std=c++14 --version 2>&1 >/dev/null | grep '^' >/dev/null; then
+	echo "Unsupported C++ compiler, try:" >&2
+	echo "      scl enable devtoolset-7 'rpmbuild ...'" >&2
+	exit 1
+fi
+if test ! -d /usr/local/boost; then
+	echo "Boost should be in /usr/local/boost" >&2
+	exit 1
+fi
+%autosetup -n ysu-%{version}
+
+%build
+cmake -DCMAKE_VERBOSE_MAKEFILE=ON -DBOOST_ROOT=/usr/local/boost -DACTIVE_NETWORK=ysu_beta_network .
+make ysu_node %{?_smp_mflags}
+make ysu_rpc %{?_smp_mflags}
+
+%install
+if [ ! %{buildroot} = "/" ]; then %{__rm} -rf %{buildroot}; fi
+mkdir -p %{buildroot}/usr/bin
+mkdir -p %{buildroot}/etc/systemd/system/
+cp ysu_node %{buildroot}/usr/bin/ysu_node-beta
+cp ysu_rpc %{buildroot}/usr/bin/ysu_rpc-beta
+cp etc/systemd/ysucurrency-beta.service %{buildroot}/etc/systemd/system/ysucurrency-beta.service
+
+%clean
+if [ ! %{buildroot} = "/" ]; then %{__rm} -rf %{buildroot}; fi
+
+%files
+%defattr(755,root,root)
+%{_bindir}/ysu_node-beta
+%{_bindir}/ysu_rpc-beta
+%attr(644,root,root) /etc/systemd/system/ysucurrency-beta.service
+
+%pre
+PATH="/usr/bin:/usr/sbin:/bin:/sbin:${PATH}"; export PATH
+mkdir -p /var/ysucurrency/Ysu
+getent group ysucurrency >/dev/null || groupadd --system ysucurrency || exit 1
+getent passwd ysucurrency >/dev/null || useradd --system --create-home --home-dir /var/ysucurrency --shell /bin/bash --comment "Ysucurrency Daemon user" --gid ysucurrency ysucurrency || exit 1
+chown -R ysucurrency:ysucurrency /var/ysucurrency
+chmod 700 /var/ysucurrency
+
+%postun
+PATH="/usr/bin:/usr/sbin:/bin:/sbin:${PATH}"; export PATH
+userdel ysucurrency >/dev/null 2>/dev/null || :
